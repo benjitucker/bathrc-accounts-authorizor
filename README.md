@@ -1,1 +1,1 @@
-# bathrc-accounts-authorizor
+# bathrc-accounts-authorizer
