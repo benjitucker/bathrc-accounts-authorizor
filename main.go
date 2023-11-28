@@ -47,9 +47,12 @@ func handleRequest(ctx context.Context, event events.APIGatewayCustomAuthorizerR
 	token := event.AuthorizationToken
 	switch strings.ToLower(token) {
 	case "allow":
-		return generatePolicy("user", "Allow", event.MethodArn), nil
+		//TODO need to allow other methods as well, as the returned policy will get cached and used for future calls to other methods
+		//return generatePolicy("user", "Allow", event.MethodArn), nil
+		return generatePolicy("user", "Allow", "*"), nil
 	case "deny":
-		return generatePolicy("user", "Deny", event.MethodArn), nil
+		//return generatePolicy("user", "Deny", event.MethodArn), nil
+		return generatePolicy("user", "Deny", "*"), nil
 	case "unauthorized":
 		return events.APIGatewayCustomAuthorizerResponse{}, errors.New("Unauthorized") // Return a 401 Unauthorized response
 	default:
