@@ -48,6 +48,7 @@ func handleRequest(ctx context.Context, event events.APIGatewayCustomAuthorizerR
 	switch strings.ToLower(token) {
 	case "allow":
 		//TODO need to allow other methods as well, as the returned policy will get cached and used for future calls to other methods
+		// In future I think we can use the RBAC roles in Auth0 to hold a list of methodArn's each role (admin, reg-user) can access
 		//return generatePolicy("user", "Allow", event.MethodArn), nil
 		return generatePolicy("user", "Allow", "*"), nil
 	case "deny":
