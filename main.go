@@ -9,6 +9,7 @@ import (
 	"github.com/go-kit/log/level"
 	"net/url"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/aws/aws-lambda-go/events"
@@ -83,7 +84,13 @@ func HandleRequest(ctx context.Context, event events.APIGatewayCustomAuthorizerR
 			errors.New("authorizer failed, AUTH0_AUDIENCE is not set")
 	}
 
-	token := event.AuthorizationToken
+	var token string
+	if len(event.AuthorizationToken) > 7 && strings.EqualFold(event.AuthorizationToken[0:7], "BEARER ") {
+		token = event.AuthorizationToken[7:]
+	} else {
+		return generatePolicy("user", "Deny", "*"),
+			errors.New("authorizer failed, invalid token " + event.AuthorizationToken)
+	}
 
 	// Setup the Auth0 Domain to Authenticate
 	issuerURL, err := url.Parse("https://" + auth0Domain + "/")
@@ -114,7 +121,7 @@ func HandleRequest(ctx context.Context, event events.APIGatewayCustomAuthorizerR
 	}
 
 	// Validate the Token
-	_, err = jwtValidator.ValidateToken(context.TODO(), token)
+	_, err = jwtValidator.ValidateToken(ctx, token)
 	if err != nil {
 		//		return generatePolicy("user", "Deny", event.MethodArn), err
 		return generatePolicy("user", "Deny", "*"), err
