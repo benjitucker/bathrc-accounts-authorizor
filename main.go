@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"flag"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
@@ -49,7 +50,7 @@ func generatePolicy(principalId, effect, resource string) events.APIGatewayCusto
 
 func toString(thing any) string {
 	m, err := json.Marshal(thing)
-	if err == nil {
+	if err != nil {
 		return err.Error()
 	}
 	return string(m)
@@ -70,12 +71,25 @@ func HandleRequest(ctx context.Context, event events.APIGatewayCustomAuthorizerR
 	logger := log.With(logger, "method", "HandleRequest")
 	_ = level.Debug(logger).Log("event", toString(event))
 
+	auth0Domain, set := os.LookupEnv("AUTH0_DOMAIN")
+	if !set {
+		return generatePolicy("user", "Deny", "*"),
+			errors.New("authorizer failed, AUTH0_DOMAIN is not set")
+	}
+
+	auth0Audience, set := os.LookupEnv("AUTH0_AUDIENCE")
+	if !set {
+		return generatePolicy("user", "Deny", "*"),
+			errors.New("authorizer failed, AUTH0_AUDIENCE is not set")
+	}
+
 	token := event.AuthorizationToken
 
 	// Setup the Auth0 Domain to Authenticate
-	issuerURL, err := url.Parse("https://" + os.Getenv("AUTH0_DOMAIN") + "/")
+	issuerURL, err := url.Parse("https://" + auth0Domain + "/")
 	if err != nil {
 		_ = level.Error(logger).Log("msg", "Failed to parse the issuer url", "err", err)
+		return generatePolicy("user", "Deny", "*"), err
 	}
 
 	// Configure the Caching Provider for the validator
@@ -86,7 +100,7 @@ func HandleRequest(ctx context.Context, event events.APIGatewayCustomAuthorizerR
 		provider.KeyFunc,
 		validator.RS256,
 		issuerURL.String(),
-		[]string{os.Getenv("AUTH0_AUDIENCE")},
+		[]string{auth0Audience},
 		validator.WithCustomClaims(
 			func() validator.CustomClaims {
 				return &CustomClaims{}
@@ -96,6 +110,7 @@ func HandleRequest(ctx context.Context, event events.APIGatewayCustomAuthorizerR
 	)
 	if err != nil {
 		_ = level.Error(logger).Log("msg", "Failed to set up the jwt validator", "err", err)
+		return generatePolicy("user", "Deny", "*"), err
 	}
 
 	// Validate the Token
