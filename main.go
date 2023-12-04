@@ -58,7 +58,7 @@ func toString(thing any) string {
 
 // CustomClaims contains custom data we want from the token.
 type CustomClaims struct {
-	Permissions []string `json:"permissons"`
+	Permissions []string `json:"permissions"`
 }
 
 // Validate does nothing for this example, but we need
