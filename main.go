@@ -5,18 +5,17 @@ import (
 	"encoding/json"
 	"errors"
 	"flag"
+	"github.com/auth0/go-jwt-middleware/v2/jwks"
+	"github.com/auth0/go-jwt-middleware/v2/validator"
+	"github.com/aws/aws-lambda-go/events"
+	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
+	"golang.org/x/exp/slices"
 	"net/url"
 	"os"
 	"strings"
 	"time"
-
-	"github.com/aws/aws-lambda-go/events"
-	"github.com/aws/aws-lambda-go/lambda"
-
-	"github.com/auth0/go-jwt-middleware/v2/jwks"
-	"github.com/auth0/go-jwt-middleware/v2/validator"
 )
 
 var (
@@ -59,13 +58,16 @@ func toString(thing any) string {
 
 // CustomClaims contains custom data we want from the token.
 type CustomClaims struct {
-	Scope string `json:"scope"`
+	Permissions []string `json:"permissons"`
 }
 
 // Validate does nothing for this example, but we need
 // it to satisfy validator.CustomClaims interface.
 func (c CustomClaims) Validate(ctx context.Context) error {
-	return nil
+	if slices.Contains(c.Permissions, "fullaccess:apis") {
+		return nil
+	}
+	return errors.New("no permission to access this resource")
 }
 
 func HandleRequest(ctx context.Context, event events.APIGatewayCustomAuthorizerRequest) (events.APIGatewayCustomAuthorizerResponse, error) {
